@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 // src/__tests__/init.test.ts
 const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const mock_fs_1 = __importDefault(require("mock-fs"));
 const initModule = __importStar(require("../commands/init"));
 jest.mock('inquirer', () => ({
@@ -48,17 +49,20 @@ jest.mock('inquirer', () => ({
     }),
 }));
 describe('initProject()', () => {
+    const configFile = path_1.default.join(process.cwd(), 'backendcli.config.json');
     beforeEach(() => {
-        (0, mock_fs_1.default)({});
+        // Setup mock fs with required structure
+        (0, mock_fs_1.default)({
+            [configFile]: '' // ensures path is mockable
+        });
     });
     afterEach(() => {
         mock_fs_1.default.restore();
     });
     it('should create backendcli.config.json with correct content', async () => {
         await initModule.initProject();
-        const configPath = './backendcli.config.json';
-        expect(fs_1.default.existsSync(configPath)).toBe(true);
-        const config = JSON.parse(fs_1.default.readFileSync(configPath, 'utf-8'));
+        expect(fs_1.default.existsSync(configFile)).toBe(true);
+        const config = JSON.parse(fs_1.default.readFileSync(configFile, 'utf-8'));
         expect(config).toEqual({
             name: 'test-app',
             prisma: true,

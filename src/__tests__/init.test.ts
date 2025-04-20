@@ -1,5 +1,6 @@
 // src/__tests__/init.test.ts
 import fs from 'fs';
+import path from 'path';
 import mock from 'mock-fs';
 import * as initModule from '../commands/init';
 
@@ -12,8 +13,13 @@ jest.mock('inquirer', () => ({
 }));
 
 describe('initProject()', () => {
+  const configFile = path.join(process.cwd(), 'backendcli.config.json');
+
   beforeEach(() => {
-    mock({});
+    // Setup mock fs with required structure
+    mock({
+      [configFile]: '' // ensures path is mockable
+    });
   });
 
   afterEach(() => {
@@ -23,10 +29,9 @@ describe('initProject()', () => {
   it('should create backendcli.config.json with correct content', async () => {
     await initModule.initProject();
 
-    const configPath = './backendcli.config.json';
-    expect(fs.existsSync(configPath)).toBe(true);
+    expect(fs.existsSync(configFile)).toBe(true);
+    const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
 
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     expect(config).toEqual({
       name: 'test-app',
       prisma: true,

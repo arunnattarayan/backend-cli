@@ -8,7 +8,29 @@ exports.generateResource = generateResource;
 const inquirer_1 = __importDefault(require("inquirer"));
 const chalk_1 = __importDefault(require("chalk"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const fileUtils_1 = require("../utils/fileUtils");
+const typeMap = {
+    string: 'String',
+    int: 'Int',
+    float: 'Float',
+    boolean: 'Boolean',
+    datetime: 'DateTime',
+    json: 'Json',
+    decimal: 'Decimal',
+    bigint: 'BigInt',
+    bytes: 'Bytes'
+};
+function isPrismaEnabled() {
+    try {
+        const configPath = path_1.default.join(process.cwd(), 'backendcli.config.json');
+        const config = JSON.parse(fs_1.default.readFileSync(configPath, 'utf-8'));
+        return !!config.prisma;
+    }
+    catch {
+        return false;
+    }
+}
 async function generateResource() {
     console.log(chalk_1.default.magentaBright('\nWhat do you want to generate?'));
     const { type } = await inquirer_1.default.prompt([
@@ -63,8 +85,8 @@ async function generateFullResource() {
         {
             path: path_1.default.join(baseDir, `${resourceName}.model.ts`),
             content: `export interface ${pascalName} {
-        ${fieldsArr.map((f) => `  ${f.name}: ${f.type};`).join('\n')}
-      }`
+${fieldsArr.map((f) => `  ${f.name}: ${f.type};`).join('\n')}
+}`
         },
         {
             path: path_1.default.join(baseDir, `${resourceName}.service.ts`),
@@ -104,6 +126,19 @@ export default router;`
     }
     for (const file of files) {
         await (0, fileUtils_1.writeFileRecursive)(file.path, file.content);
+    }
+    // Only if Prisma is enabled, append schema
+    if (isPrismaEnabled()) {
+        const prismaPath = path_1.default.join(process.cwd(), 'prisma', 'schema.prisma');
+        if (fs_1.default.existsSync(prismaPath)) {
+            const modelFields = fieldsArr.map((f) => {
+                const prismaType = typeMap[f.type.toLowerCase()] || 'String';
+                return `  ${f.name} ${prismaType}`;
+            });
+            const model = `\nmodel ${pascalName} {\n  id Int @id @default(autoincrement())\n${modelFields.join('\n')}\n}`;
+            fs_1.default.appendFileSync(prismaPath, model);
+            console.log(chalk_1.default.green(`\n✅ Prisma model '${pascalName}' appended to schema.prisma.`));
+        }
     }
     console.log(chalk_1.default.green(`\n✅ Resource '${resourceName}' generated successfully.`));
 }
