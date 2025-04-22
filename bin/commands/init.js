@@ -10,6 +10,13 @@ const chalk_1 = __importDefault(require("chalk"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const child_process_1 = require("child_process");
+const appTemplate_1 = require("../templates/appTemplate");
+const serverTemplate_1 = require("../templates/serverTemplate");
+const dbTemplate_1 = require("../templates/dbTemplate");
+const appReadyTemplate_1 = require("../templates/appReadyTemplate");
+const findallUtilTemplate_1 = __importDefault(require("../templates/findallUtilTemplate"));
+const errorHandlerMiddleware_1 = require("../templates/errorHandlerMiddleware");
+const wrapUtilTemplate_1 = require("../templates/wrapUtilTemplate");
 async function initProject() {
     console.log(chalk_1.default.magentaBright('\nWelcome to Backend CLI Init 🚀'));
     const { projectName, database, useTesting } = await inquirer_1.default.prompt([
@@ -39,7 +46,8 @@ async function initProject() {
     const testDir = path_1.default.join(projectDir, 'test');
     const folders = [
         'controllers', 'jobs', 'middlewares', 'models',
-        'routes', 'schedulers', 'services', 'config'
+        'routes', 'schedulers', 'services', 'config',
+        'context', 'utils/prisma'
     ];
     fs_1.default.mkdirSync(projectDir, { recursive: true });
     fs_1.default.mkdirSync(srcDir, { recursive: true });
@@ -91,7 +99,8 @@ async function initProject() {
         main: 'dist/server.js',
         scripts: {
             start: 'ts-node src/server.ts',
-            dev: 'nodemon',
+            generate: "prisma generate",
+            dev: 'npm run generate && nodemon',
             build: 'tsc',
             test: 'jest'
         },
@@ -102,8 +111,10 @@ async function initProject() {
             morgan: '^1.10.0'
         },
         devDependencies: {
+            "@types/cors": "^2.8.17",
             typescript: '^5.3.3',
             'ts-node': '^10.9.1',
+            "@types/morgan": "^1.9.9",
             nodemon: '^3.0.1',
             '@types/node': '^20.10.5',
             '@types/express': '^4.17.21'
@@ -125,48 +136,13 @@ async function initProject() {
     }
     fs_1.default.writeFileSync(path_1.default.join(projectDir, 'package.json'), JSON.stringify(pkgJson, null, 2));
     // App files
-    const appTs = `import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-
-import routes from './routes';
-${usePrisma ? "import { prisma } from './config/db';" : "import { connectDB } from './config/db';"}
-
-dotenv.config();
-${usePrisma ? '' : 'connectDB();'}
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(morgan('dev'));
-app.use('/api', routes);
-app.get('/', (req, res) => res.send('API is healthy ✅'));
-
-export default app;`;
-    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'app.ts'), appTs);
-    const serverTs = `import app from './app';
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(` + '`🚀 Server running at http://localhost:${PORT}`' + `);
-});`;
-    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'server.ts'), serverTs);
-    const dbTs = usePrisma
-        ? `import { PrismaClient } from '@prisma/client';
-
-export const prisma = new PrismaClient();`
-        : `import mongoose from 'mongoose';
-
-export const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.DATABASE_URL || '', {});
-    console.log('✅ MongoDB Connected');
-  } catch (err) {
-    console.error('❌ MongoDB connection failed:', err);
-    process.exit(1);
-  }
-};`;
-    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'config', 'db.ts'), dbTs);
+    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'app.ts'), (0, appTemplate_1.generateAppTemplate)());
+    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'server.ts'), (0, serverTemplate_1.generateServerTemplate)());
+    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'config', 'db.ts'), (0, dbTemplate_1.generateDbTemplate)(usePrisma));
+    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'context', 'appReady.ts'), (0, appReadyTemplate_1.generateAppReadyTemplate)());
+    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'utils', 'prisma', 'findAll.ts'), (0, findallUtilTemplate_1.default)());
+    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'middlewares', 'errorHandler.ts'), (0, errorHandlerMiddleware_1.generateerrorHandlerTemplate)());
+    fs_1.default.writeFileSync(path_1.default.join(srcDir, 'utils', 'wrapAsync.ts'), (0, wrapUtilTemplate_1.generateWrapAsyncTemplate)());
     const routesIndex = `import { Router } from 'express';
 const router = Router();
 // router.use('/users', userRoutes);

@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeFileRecursive = writeFileRecursive;
+exports.toPascalCase = toPascalCase;
 // src/utils/fileUtils.ts
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
@@ -11,4 +12,11 @@ async function writeFileRecursive(filePath, content) {
     const dir = path_1.default.dirname(filePath);
     await fs_1.default.promises.mkdir(dir, { recursive: true });
     await fs_1.default.promises.writeFile(filePath, content, 'utf-8');
+}
+function toPascalCase(str) {
+    return str
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+(.)/g, (_, c) => c.toUpperCase())
+        .replace(/^(.)/, (_, c) => c.toUpperCase())
+        .replace(/\s+/g, '');
 }

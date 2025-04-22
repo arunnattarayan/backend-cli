@@ -7,3 +7,11 @@ export async function writeFileRecursive(filePath: string, content: string) {
   await fs.promises.mkdir(dir, { recursive: true });
   await fs.promises.writeFile(filePath, content, 'utf-8');
 }
+
+export function toPascalCase(str: string): string {
+  return str
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+(.)/g, (_, c) => c.toUpperCase())
+    .replace(/^(.)/, (_, c) => c.toUpperCase())
+    .replace(/\s+/g, '');
+}

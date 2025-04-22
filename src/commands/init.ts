@@ -4,6 +4,13 @@ import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { generateAppTemplate } from '../templates/appTemplate';
+import { generateServerTemplate } from '../templates/serverTemplate';
+import { generateDbTemplate } from '../templates/dbTemplate';
+import {generateAppReadyTemplate} from '../templates/appReadyTemplate'
+import findAllUtilTemplate from '../templates/findallUtilTemplate'
+import {generateerrorHandlerTemplate} from '../templates/errorHandlerMiddleware'
+import { generateWrapAsyncTemplate } from '../templates/wrapUtilTemplate'
 
 export async function initProject() {
   console.log(chalk.magentaBright('\nWelcome to Backend CLI Init 🚀'));
@@ -37,7 +44,8 @@ export async function initProject() {
 
   const folders = [
     'controllers', 'jobs', 'middlewares', 'models',
-    'routes', 'schedulers', 'services', 'config'
+    'routes', 'schedulers', 'services', 'config',
+    'context', 'utils/prisma'
   ];
 
   fs.mkdirSync(projectDir, { recursive: true });
@@ -93,7 +101,8 @@ export async function initProject() {
     main: 'dist/server.js',
     scripts: {
       start: 'ts-node src/server.ts',
-      dev: 'nodemon',
+      generate: "prisma generate",
+      dev: 'npm run generate && nodemon',
       build: 'tsc',
       test: 'jest'
     },
@@ -104,8 +113,10 @@ export async function initProject() {
       morgan: '^1.10.0'
     },
     devDependencies: {
+      "@types/cors": "^2.8.17",
       typescript: '^5.3.3',
       'ts-node': '^10.9.1',
+      "@types/morgan": "^1.9.9",
       nodemon: '^3.0.1',
       '@types/node': '^20.10.5',
       '@types/express': '^4.17.21'
@@ -130,51 +141,14 @@ export async function initProject() {
   fs.writeFileSync(path.join(projectDir, 'package.json'), JSON.stringify(pkgJson, null, 2));
 
   // App files
-  const appTs = `import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
 
-import routes from './routes';
-${usePrisma ? "import { prisma } from './config/db';" : "import { connectDB } from './config/db';"}
-
-dotenv.config();
-${usePrisma ? '' : 'connectDB();'}
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(morgan('dev'));
-app.use('/api', routes);
-app.get('/', (req, res) => res.send('API is healthy ✅'));
-
-export default app;`;
-  fs.writeFileSync(path.join(srcDir, 'app.ts'), appTs);
-
-  const serverTs = `import app from './app';
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(` + '`🚀 Server running at http://localhost:${PORT}`' + `);
-});`;
-  fs.writeFileSync(path.join(srcDir, 'server.ts'), serverTs);
-
-  const dbTs = usePrisma
-    ? `import { PrismaClient } from '@prisma/client';
-
-export const prisma = new PrismaClient();`
-    : `import mongoose from 'mongoose';
-
-export const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.DATABASE_URL || '', {});
-    console.log('✅ MongoDB Connected');
-  } catch (err) {
-    console.error('❌ MongoDB connection failed:', err);
-    process.exit(1);
-  }
-};`;
-  fs.writeFileSync(path.join(srcDir, 'config', 'db.ts'), dbTs);
-
+  fs.writeFileSync(path.join(srcDir, 'app.ts'), generateAppTemplate());
+  fs.writeFileSync(path.join(srcDir, 'server.ts'), generateServerTemplate());
+  fs.writeFileSync(path.join(srcDir, 'config', 'db.ts'), generateDbTemplate(usePrisma));
+  fs.writeFileSync(path.join(srcDir, 'context', 'appReady.ts'), generateAppReadyTemplate())
+  fs.writeFileSync(path.join(srcDir, 'utils', 'prisma', 'findAll.ts'), findAllUtilTemplate())
+  fs.writeFileSync(path.join(srcDir, 'middlewares', 'errorHandler.ts'), generateerrorHandlerTemplate())
+  fs.writeFileSync(path.join(srcDir, 'utils', 'wrapAsync.ts'), generateWrapAsyncTemplate())
   const routesIndex = `import { Router } from 'express';
 const router = Router();
 // router.use('/users', userRoutes);
